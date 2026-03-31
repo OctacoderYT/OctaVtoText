@@ -395,6 +395,194 @@
 
 
 
+// import { useEffect, useRef, useState } from "react";
+// import "./App.css";
+
+// const SpeechRecognition =
+//   window.SpeechRecognition || window.webkitSpeechRecognition;
+
+// export default function App() {
+//   /* ===============================
+//      REFS
+//   =============================== */
+//   const recognitionRef = useRef(null);
+//   const isListeningRef = useRef(false);
+//   const pendingLangRef = useRef(null);
+
+//   /* ===============================
+//      STATE
+//   =============================== */
+//   const [listening, setListening] = useState(false);
+//   const [text, setText] = useState("");
+//   const [interim, setInterim] = useState("");
+//   const [theme, setTheme] = useState("dark");
+//   const [language, setLanguage] = useState("en-IN");
+
+//   /* ===============================
+//      INIT SPEECH ENGINE (ONCE)
+//   =============================== */
+//   useEffect(() => {
+//     if (!SpeechRecognition) {
+//       alert("Speech Recognition not supported in this browser");
+//       return;
+//     }
+
+//     const recognition = new SpeechRecognition();
+//     recognitionRef.current = recognition;
+
+//     recognition.continuous = true;
+//     recognition.interimResults = true;
+//     recognition.lang = language;
+
+//     recognition.onresult = (event) => {
+//       if (!isListeningRef.current) return;
+
+//       let finalText = "";
+//       let interimText = "";
+
+//       for (let i = event.resultIndex; i < event.results.length; i++) {
+//         const res = event.results[i];
+//         const transcript = res[0].transcript;
+
+//         if (res.isFinal) {
+//           finalText += transcript + " ";
+//         } else {
+//           interimText += transcript;
+//         }
+//       }
+
+//       if (finalText) {
+//         setText((prev) => prev + finalText);
+//         setInterim("");
+//       } else {
+//         setInterim(interimText);
+//       }
+//     };
+
+//     recognition.onend = () => {
+//       // 🌍 Apply pending language safely
+//       if (pendingLangRef.current) {
+//         recognition.lang = pendingLangRef.current;
+//         pendingLangRef.current = null;
+//       }
+
+//       // 🔁 Restart only if mic is ON
+//       if (isListeningRef.current) {
+//         recognition.start();
+//       }
+//     };
+
+//     recognition.onerror = (e) => {
+//       console.error("Speech Recognition Error:", e.error);
+//     };
+
+//     return () => recognition.stop();
+//   }, []);
+
+//   /* ===============================
+//      START / STOP
+//   =============================== */
+//   const toggleListening = () => {
+//     const recognition = recognitionRef.current;
+//     if (!recognition) return;
+
+//     if (!listening) {
+//       isListeningRef.current = true;
+//       recognition.start();
+//       setListening(true);
+//     } else {
+//       isListeningRef.current = false;
+//       recognition.stop();
+//       setListening(false);
+//       setInterim("");
+//     }
+//   };
+
+//   /* ===============================
+//      LANGUAGE SWITCH (SAFE)
+//   =============================== */
+//   const handleLanguageChange = (newLang) => {
+//     setLanguage(newLang);
+
+//     const recognition = recognitionRef.current;
+//     if (!recognition) return;
+
+//     // Save language change
+//     pendingLangRef.current = newLang;
+
+//     // Stop recognition safely
+//     if (isListeningRef.current) {
+//       recognition.stop();
+//     } else {
+//       recognition.lang = newLang;
+//       pendingLangRef.current = null;
+//     }
+//   };
+
+//   /* ===============================
+//      UI
+//   =============================== */
+//   return (
+//     <div className={`app ${theme}`}>
+//       {/* 🌙 THEME TOGGLE */}
+//       <div className="theme-toggle">
+//         <span>🌙</span>
+//         <label className="switch">
+//           <input
+//             type="checkbox"
+//             checked={theme === "light"}
+//             onChange={() =>
+//               setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+//             }
+//           />
+//           <span className="slider"></span>
+//         </label>
+//         <span>☀️</span>
+//       </div>
+
+//       <div className="card">
+//         <header>
+//           <h1>🎙️ OctaVoice to Text</h1>
+//           <p>Real-time • Editable • Unlimited</p>
+//         </header>
+
+//         {/* 🌍 LANGUAGE SELECT */}
+//         <select
+//           value={language}
+//           onChange={(e) => handleLanguageChange(e.target.value)}
+//         >
+//           <option value="en-IN">English</option>
+//           <option value="hi-IN">Hindi</option>
+//           <option value="mr-IN">Marathi</option>
+//           <option value="fr-FR">French</option>
+//         </select>
+
+//         {/* ✍️ TEXT EDITOR */}
+//         <div className="editor-wrapper">
+//           <textarea
+//             className="editor"
+//             value={text}
+//             onChange={(e) => setText(e.target.value)}
+//             placeholder="Click start and begin speaking..."
+//           />
+//           {interim && <div className="interim">{interim}</div>}
+//         </div>
+
+//         {/* 🎤 START / STOP */}
+//         <button
+//           className={`main-btn ${listening ? "active" : ""}`}
+//           onClick={toggleListening}
+//         >
+//           {listening ? "⏹ Stop Listening" : "🎤 Start Listening"}
+//         </button>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+/************** new code *******************/
+
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
@@ -407,7 +595,6 @@ export default function App() {
   =============================== */
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
-  const pendingLangRef = useRef(null);
 
   /* ===============================
      STATE
@@ -417,6 +604,20 @@ export default function App() {
   const [interim, setInterim] = useState("");
   const [theme, setTheme] = useState("dark");
   const [language, setLanguage] = useState("en-IN");
+
+  /* ===============================
+     SAFE START (PREVENT ERROR)
+  =============================== */
+  const safeStart = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.warn("Start prevented:", err.message);
+    }
+  };
 
   /* ===============================
      INIT SPEECH ENGINE (ONCE)
@@ -433,6 +634,7 @@ export default function App() {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = language;
+    recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
       if (!isListeningRef.current) return;
@@ -460,19 +662,16 @@ export default function App() {
     };
 
     recognition.onend = () => {
-      // 🌍 Apply pending language safely
-      if (pendingLangRef.current) {
-        recognition.lang = pendingLangRef.current;
-        pendingLangRef.current = null;
-      }
-
-      // 🔁 Restart only if mic is ON
+      // 🔁 Restart safely (only if still listening)
       if (isListeningRef.current) {
-        recognition.start();
+        setTimeout(() => {
+          safeStart();
+        }, 200);
       }
     };
 
     recognition.onerror = (e) => {
+      if (e.error === "aborted") return;
       console.error("Speech Recognition Error:", e.error);
     };
 
@@ -488,7 +687,8 @@ export default function App() {
 
     if (!listening) {
       isListeningRef.current = true;
-      recognition.start();
+      recognition.lang = language;
+      safeStart();
       setListening(true);
     } else {
       isListeningRef.current = false;
@@ -499,24 +699,27 @@ export default function App() {
   };
 
   /* ===============================
-     LANGUAGE SWITCH (SAFE)
+     LANGUAGE SWITCH (FINAL FIX)
   =============================== */
   const handleLanguageChange = (newLang) => {
-    setLanguage(newLang);
-
     const recognition = recognitionRef.current;
     if (!recognition) return;
 
-    // Save language change
-    pendingLangRef.current = newLang;
+    setLanguage(newLang);
 
-    // Stop recognition safely
-    if (isListeningRef.current) {
-      recognition.stop();
-    } else {
+    // 🛑 Stop first
+    isListeningRef.current = false;
+    recognition.stop();
+
+    // ⏳ Wait for full stop (important)
+    setTimeout(() => {
       recognition.lang = newLang;
-      pendingLangRef.current = null;
-    }
+
+      // ▶️ Restart cleanly
+      isListeningRef.current = true;
+      safeStart();
+      setListening(true);
+    }, 400);
   };
 
   /* ===============================
@@ -568,7 +771,7 @@ export default function App() {
           {interim && <div className="interim">{interim}</div>}
         </div>
 
-        {/* 🎤 START / STOP */}
+        {/* 🎤 BUTTON */}
         <button
           className={`main-btn ${listening ? "active" : ""}`}
           onClick={toggleListening}
@@ -579,3 +782,5 @@ export default function App() {
     </div>
   );
 }
+
+
